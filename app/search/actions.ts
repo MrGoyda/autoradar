@@ -4,14 +4,39 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { sendTelegramMessage } from '@/lib/telegram'
+import { headers } from 'next/headers'
+import { Database } from '@/types/supabase'
+
+const kzPhoneRegex = /^(?:\+7|8)?\s?\(?\d{3}\)?\s?\d{3}[\s.-]?\d{2}[\s.-]?\d{2}$/
 
 const Schema = z.object({
-  description: z.string().min(5, 'Минимум 5 символов'),
-  phone: z.string().min(10, 'Введите корректный номер телефона'),
+  description: z.string()
+    .min(5, 'Опишите деталь подробнее')
+    .max(500, 'Описание слишком длинное')
+    .trim(),
+  phone: z.string()
+    .regex(kzPhoneRegex, 'Введите корректный номер Казахстана (+7...)'),
 })
+
+type LeadRow = Database['public']['Tables']['leads']['Row']
+type SellerRow = Pick<Database['public']['Tables']['sellers']['Row'], 'telegram_id'>
 
 export async function createLead(formData: FormData) {
   const supabase = await createClient()
+  
+  // 1. ПРОВЕРКА RATE LIMIT
+  const headerList = await headers()
+  const ip = headerList.get('x-forwarded-for')?.split(',')[0] || '127.0.0.1'
+  
+  const { count } = await supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('utm_source', ip)
+    .gt('created_at', new Date(Date.now() - 15 * 60 * 1000).toISOString())
+
+  if (count && count >= 3) {
+    return { error: 'Слишком много заявок. Подождите 15 минут.' }
+  }
 
   const rawData = {
     description: formData.get('description') as string,
@@ -22,61 +47,66 @@ export async function createLead(formData: FormData) {
 
   if (!validatedFields.success) {
     return {
-      error: 'Заполните поля корректно',
+      error: 'Ошибка валидации',
       fields: validatedFields.error.flatten().fieldErrors,
     }
   }
 
-  // 1. Сохраняем заявку в базу
+  // 2. СОХРАНЕНИЕ В БАЗУ
   const leadData = {
     description: validatedFields.data.description,
-    client_phone: validatedFields.data.phone,
-    status: 'new',
-    utm_source: 'site_search',
+    client_phone: validatedFields.data.phone, // Телефон сохраняем В БАЗУ для тебя
+    status: 'new' as const,
+    utm_source: ip,
     photos: [] 
   }
 
-  // Вставляем и получаем ID
-  // ДОБАВЛЕНО: "as any" в конце цепочки, чтобы TS не ругался на newLead.id
-  const { data: newLead, error } = await supabase
+  const { data: newLead, error: dbError } = await supabase
     .from('leads')
     .insert(leadData as any)
     .select()
-    .single() as any 
+    .single()
 
-  if (error) {
-    console.error('Supabase Error:', error)
-    return { error: 'Ошибка сохранения. Попробуйте позже.' }
+  if (dbError || !newLead) {
+    console.error('Supabase Error:', dbError)
+    return { error: 'Системная ошибка. Попробуйте позже.' }
   }
 
-  // -------------------------------------------------------
-  // 2. БЛОК РАССЫЛКИ
-  // -------------------------------------------------------
-  
-  // Получаем продавцов
-  // ДОБАВЛЕНО: "as any" в конце цепочки, чтобы TS не ругался на seller.telegram_id
+  const typedLead = newLead as LeadRow
+
+  // 3. АНОНИМНАЯ РАССЫЛКА С КНОПКАМИ (Телефон здесь НЕ отправляем)
   const { data: sellers } = await supabase
     .from('sellers')
     .select('telegram_id')
-    .eq('is_active', true) as any
+    .eq('is_active', true)
 
-  if (sellers && sellers.length > 0) {
-    // Формируем текст
+  if (sellers?.length) {
+    const typedSellers = sellers as SellerRow[]
+    
+    // Формируем текст БЕЗ ТЕЛЕФОНА
     const message = `
-⚡️ <b>Новая заявка!</b>
+📦 <b>НОВАЯ ЗАЯВКА #${typedLead.id.slice(0, 8)}</b>
 
-🚙 <b>Описание:</b> ${validatedFields.data.description}
-📞 <b>Клиент:</b> ${validatedFields.data.phone}
+🛠 <b>Деталь:</b> ${validatedFields.data.description}
+📍 <b>Город:</b> Астана
 
-🆔 ID заявки: <code>${newLead?.id || 'Неизвестно'}</code>
+<i>Нажмите кнопку ниже, чтобы предложить цену. Клиент не увидит ваш номер до подтверждения.</i>
     `
-
-    // Рассылаем
-    await Promise.all(
-      sellers.map((seller: any) => sendTelegramMessage(seller.telegram_id, message))
+    
+    // Настраиваем кнопки
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: '💰 Предложить цену', callback_data: `offer_${typedLead.id}` },
+          { text: '❌ Нет в наличии', callback_data: `no_stock_${typedLead.id}` }
+        ]
+      ]
+    }
+    
+    await Promise.allSettled(
+      typedSellers.map(s => sendTelegramMessage(s.telegram_id, message, keyboard))
     )
   }
 
-  // 3. Редирект
   redirect('/success?type=search')
 }

@@ -101,3 +101,20 @@
 .animate-radar-pulse {
   animation: radar-pulse 4s ease-in-out infinite;
 }
+
+/* --- В САМЫЙ НИЗ app/globals.css --- */
+
+/* Бегущая строка (Infinite Scroll) */
+@keyframes scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.animate-scroll {
+  animation: scroll 40s linear infinite;
+}
+
+/* При наведении останавливаем строку, чтобы рассмотреть */
+.animate-scroll:hover {
+  animation-play-state: paused;
+}

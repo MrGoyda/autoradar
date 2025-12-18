@@ -1,13 +1,19 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, Search, Camera, Zap, ShieldCheck, Wallet, ChevronRight } from 'lucide-react'
+import { ArrowRight, Search, Camera, Zap, ShieldCheck, Wallet, ChevronRight, MessageCircle, Truck, FileText } from 'lucide-react'
+
+// Список брендов для бегущей строки (можно повторять для длинны)
+const BRANDS = [
+  "Toyota", "BMW", "Mercedes-Benz", "Lexus", "Kia", "Hyundai", 
+  "Audi", "Volkswagen", "Nissan", "Chevrolet", "Ford", "Land Rover",
+  "Porsche", "Mazda", "Subaru", "Honda", "Skoda", "Volvo"
+]
 
 export default function Home() {
   return (
-    // 1. УБРАЛ bg-zinc-950 отсюда (он перекрывал кольца)
     <div className="min-h-screen bg-cyber-grid bg-cyber-grid-size text-white selection:bg-radar-blue/30 font-sans relative overflow-x-hidden">
       
-      {/* --- ГЛОБАЛЬНЫЙ СВЕТ (Ambient) --- */}
+      {/* --- ГЛОБАЛЬНЫЙ СВЕТ --- */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-radar-blue/15 blur-[120px] rounded-full pointer-events-none -z-10" />
 
       {/* --- HEADER --- */}
@@ -39,37 +45,25 @@ export default function Home() {
       <main className="pt-32 pb-20">
         
         {/* --- HERO SECTION --- */}
-        <section className="relative px-6 max-w-5xl mx-auto flex flex-col items-center text-center mb-32">
+        <section className="relative px-6 max-w-5xl mx-auto flex flex-col items-center text-center mb-24">
           
-        {/* ЭФФЕКТ РАДАРА (ИСПРАВЛЕНО СМЕЩЕНИЕ) */}
-          {/* 1. Внешняя обертка: Отвечает ТОЛЬКО за позицию (Центрирование) */}
+          {/* ЭФФЕКТ РАДАРА */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-             
-             {/* 2. Внутренняя обертка: Отвечает за РАЗМЕР и ДЫХАНИЕ (animate-radar-pulse) */}
              <div className="w-[600px] h-[600px] animate-radar-pulse relative">
-                
-                 {/* Внешнее кольцо */}
                  <div className="absolute inset-0 border border-radar-blue/50 rounded-full animate-radar-spin" />
-                 
-                 {/* Внутреннее кольцо */}
                  <div className="absolute inset-[15%] border border-radar-purple/40 rounded-full animate-radar-reverse" />
-                 
-                 {/* Центральный круг */}
                  <div className="absolute inset-[40%] border border-white/20 rounded-full shadow-[0_0_30px_rgba(59,130,246,0.2)]" />
-                 
              </div>
           </div>
-          {/* КОНТЕНТ (Важно: relative z-10, чтобы текст был ПОВЕРХ колец) */}
+
           <div className="relative z-10 flex flex-col items-center">
-            
-            {/* Status Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/80 border border-white/10 backdrop-blur-md mb-8 animate-fade-in-up shadow-[0_0_15px_-3px_rgba(59,130,246,0.2)]">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
               </span>
               <span className="text-xs font-bold text-zinc-300 uppercase tracking-widest">
-                System Online • 150+ баз
+                System Online • 150+ складов
               </span>
             </div>
 
@@ -83,13 +77,10 @@ export default function Home() {
             </h1>
             
             <p className="text-lg md:text-xl text-zinc-400 max-w-2xl leading-relaxed mb-12">
-              Агрегатор автозапчастей нового поколения. <br className="hidden md:inline"/>
-              Не звони — просто нажми кнопку.
+              Не трать время на обзвон разборов. Оставь заявку — продавцы сами предложат лучшую цену в течение 15 минут.
             </p>
 
-            {/* Action Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl">
-              {/* Manual Search (Active) */}
               <Link href="/search" className="group relative overflow-hidden bg-zinc-900/80 hover:bg-zinc-900 border border-white/10 p-6 rounded-2xl transition-all duration-300 hover:border-radar-blue/50 hover:shadow-[0_0_40px_-10px_rgba(59,130,246,0.2)] backdrop-blur-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-radar-blue/10 rounded-xl text-radar-blue group-hover:bg-radar-blue group-hover:text-white transition-colors">
@@ -103,9 +94,8 @@ export default function Home() {
                 </div>
               </Link>
 
-              {/* AI Vision Search (Locked) */}
               <div className="group relative overflow-hidden bg-zinc-900/40 border border-white/5 p-6 rounded-2xl opacity-60 cursor-not-allowed">
-                <div className="absolute top-3 right-3 px-2 py-0.5 bg-zinc-800 rounded text-[10px] font-bold uppercase tracking-wider text-zinc-500">Soon</div>
+                <div className="absolute top-3 right-3 px-2 py-0.5 bg-zinc-800 rounded text-[10px] font-bold uppercase tracking-wider text-zinc-500">Скоро</div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-zinc-800/50 rounded-xl text-zinc-500 grayscale">
                     <Camera className="w-6 h-6" />
@@ -113,68 +103,105 @@ export default function Home() {
                 </div>
                 <div className="text-left">
                   <h3 className="text-lg font-semibold text-zinc-500 mb-1">Поиск по фото</h3>
-                  <p className="text-sm text-zinc-600">AI Vision определит деталь</p>
+                  <p className="text-sm text-zinc-600">ИИ распознает деталь по снимку</p>
                 </div>
               </div>
             </div>
-
           </div>
         </section>
 
-        {/* --- STATS / LOGOS --- */}
-        <section className="border-y border-white/5 bg-white/[0.02] py-12 mb-32 backdrop-blur-sm">
-          <div className="max-w-5xl mx-auto px-6 flex flex-wrap justify-center md:justify-between items-center gap-8 opacity-40 grayscale hover:grayscale-0 transition-all duration-700">
-            <span className="text-2xl font-bold font-serif tracking-tighter">TOYOTA</span>
-            <span className="text-2xl font-bold font-mono">BMW Service</span>
-            <span className="text-2xl font-black italic">MERCEDES</span>
-            <span className="text-2xl font-semibold">Lexus</span>
-            <span className="text-2xl font-bold tracking-[0.2em]">KIA</span>
+        {/* --- MARQUEE (БЕГУЩАЯ СТРОКА) --- */}
+        <section className="py-10 border-y border-white/5 bg-white/[0.02] backdrop-blur-sm mb-32 relative overflow-hidden">
+          {/* Градиенты по бокам для плавного исчезновения */}
+          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-zinc-950 to-transparent z-10" />
+          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-zinc-950 to-transparent z-10" />
+          
+          <div className="flex flex-col items-center mb-6 relative z-10">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Поддерживаем все марки</span>
+          </div>
+
+          <div className="flex w-full overflow-hidden whitespace-nowrap mask-image-linear-gradient">
+            <div className="flex animate-scroll min-w-full gap-16 items-center">
+              {/* Первый набор брендов */}
+              {BRANDS.map((brand, i) => (
+                <span key={i} className="text-2xl font-bold text-zinc-600 hover:text-white transition-colors cursor-default uppercase font-mono tracking-tighter">
+                  {brand}
+                </span>
+              ))}
+              {/* Дубликат для бесшовности */}
+              {BRANDS.map((brand, i) => (
+                <span key={`dup-${i}`} className="text-2xl font-bold text-zinc-600 hover:text-white transition-colors cursor-default uppercase font-mono tracking-tighter">
+                  {brand}
+                </span>
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* --- FEATURES --- */}
+        {/* --- FEATURES (РУСИФИЦИРОВАНО) --- */}
         <section className="max-w-6xl mx-auto px-6 mb-32">
-          <h2 className="text-3xl md:text-4xl font-bold mb-16 text-center bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-center text-white">
             Технологии поиска
           </h2>
+          <p className="text-zinc-400 text-center max-w-2xl mx-auto mb-16">
+            Мы объединили современные алгоритмы и проверенных поставщиков, чтобы вы получали запчасти быстрее и дешевле.
+          </p>
+
           <div className="grid md:grid-cols-3 gap-6">
             <FeatureCard 
               icon={<Zap className="w-6 h-6 text-amber-400" />}
-              title="Turbo Mode"
-              desc="Алгоритм мгновенно рассылает запрос всем активным продавцам в радиусе города."
+              title="Турбо-поиск"
+              desc="Ваша заявка мгновенно разлетается по всем подключенным авторазборам и магазинам города."
             />
             <FeatureCard 
               icon={<Wallet className="w-6 h-6 text-green-400" />}
-              title="Smart Bidding"
-              desc="Продавцы видят конкуренцию и предлагают лучшую цену, чтобы забрать ваш заказ."
+              title="Честный аукцион"
+              desc="Продавцы видят конкуренцию и снижают цены, чтобы вы выбрали именно их предложение."
             />
             <FeatureCard 
               icon={<ShieldCheck className="w-6 h-6 text-radar-blue" />}
-              title="Verified Only"
-              desc="Мы фильтруем продавцов. В системе только проверенные разборы с рейтингом."
+              title="Только проверенные"
+              desc="Мы вручную проверяем каждого продавца. Рейтинг и отзывы гарантируют безопасность сделки."
             />
           </div>
         </section>
 
-        {/* --- STEPS --- */}
+        {/* --- HOW IT WORKS (ОБНОВЛЕНО) --- */}
         <section className="max-w-5xl mx-auto px-6 mb-24">
-          <div className="bg-zinc-900/40 border border-white/10 rounded-3xl p-8 md:p-12 overflow-hidden relative backdrop-blur-md">
-            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-radar-purple/10 rounded-full blur-[100px] pointer-events-none" />
-            
-            <h2 className="text-3xl font-bold mb-10 relative z-10">Как это работает</h2>
-            <div className="space-y-8 relative z-10 border-l border-white/10 pl-8 ml-4">
-              <Step number="01" text="Создайте заявку (текст или фото)" />
-              <Step number="02" text="Система оповестит 150+ складов" />
-              <Step number="03" text="Получите предложения в Telegram" />
+          <div className="flex flex-col md:flex-row gap-4 items-end justify-between mb-12">
+            <div className="text-left">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">Как это работает?</h2>
+              <p className="text-zinc-400">Путь от заявки до детали занимает 3 шага</p>
             </div>
+            <Link href="/search">
+              <Button className="bg-white text-zinc-950 hover:bg-zinc-200">
+                Начать поиск <ChevronRight className="ml-2 w-4 h-4" />
+              </Button>
+            </Link>
+          </div>
 
-            <div className="mt-12 relative z-10 pl-4">
-               <Link href="/search">
-                <Button size="lg" className="bg-white text-zinc-950 hover:bg-zinc-200 font-bold text-md h-14 px-8 rounded-xl shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.5)] transition-shadow">
-                  Запустить поиск <ChevronRight className="ml-2 w-4 h-4" />
-                </Button>
-              </Link>
-            </div>
+          <div className="grid md:grid-cols-3 gap-6 relative">
+            {/* Линия соединения (видна только на десктопе) */}
+            <div className="hidden md:block absolute top-12 left-0 right-0 h-0.5 bg-gradient-to-r from-radar-blue/0 via-radar-blue/30 to-radar-blue/0 -z-10" />
+
+            <StepCard 
+              number="01" 
+              icon={<FileText className="w-6 h-6 text-radar-blue" />}
+              title="Оставьте заявку" 
+              desc="Опишите деталь или просто прикрепите фото. Укажите марку и модель авто."
+            />
+            <StepCard 
+              number="02" 
+              icon={<MessageCircle className="w-6 h-6 text-radar-purple" />}
+              title="Сравните цены" 
+              desc="Получите предложения с фото и ценами от разных продавцов в WhatsApp или на сайте."
+            />
+            <StepCard 
+              number="03" 
+              icon={<Truck className="w-6 h-6 text-green-400" />}
+              title="Заберите деталь" 
+              desc="Выберите лучший вариант, свяжитесь с продавцом и договоритесь о доставке."
+            />
           </div>
         </section>
 
@@ -192,7 +219,7 @@ export default function Home() {
           <div className="flex gap-8 text-sm text-zinc-500">
             <Link href="#" className="hover:text-radar-blue transition-colors">Оферта</Link>
             <Link href="#" className="hover:text-radar-blue transition-colors">Продавцам</Link>
-            <Link href="#" className="hover:text-radar-blue transition-colors">Support</Link>
+            <Link href="#" className="hover:text-radar-blue transition-colors">Поддержка</Link>
           </div>
         </div>
       </footer>
@@ -201,10 +228,12 @@ export default function Home() {
   )
 }
 
+// --- НОВЫЕ КОМПОНЕНТЫ ---
+
 function FeatureCard({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) {
   return (
-    <div className="p-8 rounded-2xl bg-zinc-900/30 border border-white/5 hover:border-radar-blue/30 hover:bg-zinc-900/50 transition-all duration-300 group">
-      <div className="w-14 h-14 rounded-xl bg-zinc-800/50 border border-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+    <div className="p-8 rounded-2xl bg-zinc-900/30 border border-white/5 hover:border-radar-blue/30 hover:bg-zinc-900/50 transition-all duration-300 group hover:-translate-y-1">
+      <div className="w-14 h-14 rounded-xl bg-zinc-800/50 border border-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 group-hover:shadow-[0_0_20px_-5px_rgba(59,130,246,0.3)]">
         {icon}
       </div>
       <h3 className="text-xl font-bold mb-3 text-white group-hover:text-radar-blue transition-colors">{title}</h3>
@@ -213,12 +242,17 @@ function FeatureCard({ icon, title, desc }: { icon: React.ReactNode, title: stri
   )
 }
 
-function Step({ number, text }: { number: string, text: string }) {
+function StepCard({ number, icon, title, desc }: { number: string, icon: React.ReactNode, title: string, desc: string }) {
   return (
-    <div className="flex items-center gap-6 relative group">
-      <div className="absolute -left-[41px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-zinc-900 border border-white/20 group-hover:border-radar-blue group-hover:bg-radar-blue transition-colors shadow-[0_0_10px_rgba(0,0,0,0.5)]" />
-      <span className="text-4xl font-bold text-zinc-800 font-mono group-hover:text-white/20 transition-colors">{number}</span>
-      <span className="text-lg text-zinc-300 font-medium group-hover:text-white transition-colors">{text}</span>
+    <div className="relative p-6 rounded-2xl bg-zinc-950 border border-white/10 hover:border-radar-blue/40 transition-colors z-10 group">
+      <div className="flex justify-between items-start mb-6">
+        <div className="w-12 h-12 rounded-full bg-zinc-900 border border-white/5 flex items-center justify-center group-hover:border-radar-blue/50 transition-colors">
+          {icon}
+        </div>
+        <span className="text-4xl font-black text-zinc-800/50 font-mono select-none group-hover:text-radar-blue/10 transition-colors">{number}</span>
+      </div>
+      <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
+      <p className="text-sm text-zinc-400 leading-relaxed">{desc}</p>
     </div>
   )
 }

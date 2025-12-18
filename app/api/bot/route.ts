@@ -2,6 +2,8 @@ import { Telegraf } from 'telegraf'
 import { createClient } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
 
+
+
 // Инициализация бота
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN!)
 
@@ -50,6 +52,13 @@ bot.start(async (ctx) => {
 // Обработчик входящих запросов от Telegram (Webhook)
 export async function POST(request: Request) {
   try {
+    // ПРОВЕРКА СЕКРЕТНОГО ТОКЕНА
+    const secretToken = request.headers.get('X-Telegram-Bot-Api-Secret-Token')
+    if (secretToken !== process.env.TELEGRAM_WEBHOOK_SECRET) {
+      console.warn('Unauthorized bot access attempt')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     await bot.handleUpdate(body)
     return NextResponse.json({ ok: true })
@@ -58,3 +67,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false }, { status: 500 })
   }
 }
+
+// Добавь обработчик callback_query
+bot.on('callback_query', async (ctx) => {
+  const data = (ctx.callbackQuery as any).data
+  
+  if (data.startsWith('offer_')) {
+    const leadId = data.replace('offer_', '')
+    
+    // Сохраняем временное состояние (какую заявку комментирует продавец)
+    // В идеале использовать Redis, но для начала можно через сессию Telegraf или просто переспросить
+    await ctx.answerCbQuery()
+    return ctx.reply(`Введите стоимость детали для заявки #${leadId.slice(0, 8)} (только цифры):`)
+  }
+
+  if (data.startsWith('no_stock_')) {
+    await ctx.answerCbQuery('Принято')
+    return ctx.editMessageText('Вы отметили, что детали нет в наличии. Спасибо!')
+  }
+})
+
+// Обработчик текстовых сообщений (прием цены)
+bot.on('text', async (ctx) => {
+  const text = ctx.message.text
+  const sellerId = ctx.from.id
+
+  if (/^\d+$/.test(text)) {
+    // Если пришло число — это цена. 
+    // Тут логика: нужно понять к какому leadId эта цена относится.
+    // Для MVP можно запрашивать цену в формате "ID Цена", 
+    // Но лучше хранить "состояние" продавца в базе данных (поле last_active_lead в таблице sellers).
+    
+    return ctx.reply(`Цена ${text} KZT принята! Мы сообщим вам, если клиент выберет ваше предложение.`)
+  }
+})
