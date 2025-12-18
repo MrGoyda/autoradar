@@ -50,6 +50,7 @@ export interface Database {
           specialization: string[] | null
           speed_rating: number | null
           is_active: boolean
+          last_active_lead_id: string | null // Добавлено
         }
         Insert: {
           id?: string
@@ -59,6 +60,17 @@ export interface Database {
           specialization?: string[] | null
           speed_rating?: number | null
           is_active?: boolean
+          last_active_lead_id?: string | null // Добавлено
+        }
+        Update: { // Добавлено для работы .update()
+          id?: string
+          created_at?: string
+          telegram_id?: number
+          name?: string
+          specialization?: string[] | null
+          speed_rating?: number | null
+          is_active?: boolean
+          last_active_lead_id?: string | null
         }
       }
       offers: {
@@ -75,8 +87,17 @@ export interface Database {
           id?: string
           created_at?: string
           lead_id: string
-          seller_id?: string | null
+          seller_id: string | null
           price_vendor: number
+          comment?: string | null
+          is_winner?: boolean
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          lead_id?: string
+          seller_id?: string | null
+          price_vendor?: number
           comment?: string | null
           is_winner?: boolean
         }
@@ -97,7 +118,16 @@ export interface Database {
           offer_id: string
           lead_id: string
           final_price: number
-          margin?: never // Margin считается триггером
+          margin?: never 
+          payment_status?: string | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          offer_id?: string
+          lead_id?: string
+          final_price?: number
+          margin?: never
           payment_status?: string | null
         }
       }
