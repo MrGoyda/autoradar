@@ -14,133 +14,146 @@ type OfferInsert = Database['public']['Tables']['offers']['Insert']
 
 // --- START: Регистрация продавца ---
 bot.start(async (ctx) => {
-  const supabase = await createClient<Database>()
-  const user = ctx.from
-  if (!user) return ctx.reply('Ошибка определения пользователя.')
+  try {
+    const supabase = await createClient<Database>()
+    const user = ctx.from
+    if (!user) return await ctx.reply('Ошибка определения пользователя.')
 
-  const { data: existingSeller } = await supabase
-    .from('sellers')
-    .select('id')
-    .eq('telegram_id', user.id)
-    .maybeSingle()
+    console.log(`[BOT] Start command from: ${user.id}`)
 
-  if (existingSeller) {
-    return ctx.reply('С возвращением! Вы уже в системе Autoradar. 📡')
+    const { data: existingSeller } = await supabase
+      .from('sellers')
+      .select('id')
+      .eq('telegram_id', user.id)
+      .maybeSingle()
+
+    if (existingSeller) {
+      return await ctx.reply('С возвращением! Вы уже в системе Autoradar. 📡')
+    }
+
+    const newSeller: SellerInsert = {
+      telegram_id: user.id,
+      name: user.first_name || 'Неизвестный',
+      is_active: true,
+      last_active_lead_id: null
+    }
+
+    const { error } = await (supabase.from('sellers') as any).insert(newSeller)
+
+    if (error) {
+      console.error('[BOT] DB Registration Error:', error)
+      return await ctx.reply('Ошибка регистрации в базе данных.')
+    }
+
+    return await ctx.reply('Добро пожаловать в Autoradar! 🚗\nТеперь вы будете получать заявки.')
+  } catch (err) {
+    console.error('[BOT] Start crash:', err)
   }
-
-  const newSeller: SellerInsert = {
-    telegram_id: user.id,
-    name: user.first_name || 'Неизвестный',
-    is_active: true,
-    last_active_lead_id: null
-  }
-
-  // Обход ошибки never через двойное приведение инстанса таблицы
-  const { error } = await (supabase.from('sellers') as any).insert(newSeller)
-
-  if (error) return ctx.reply('Ошибка регистрации. Попробуйте позже.')
-  return ctx.reply('Добро пожаловать в Autoradar! 🚗\nТеперь вы будете получать заявки.')
 })
 
 // --- CALLBACK QUERIES: Обработка кнопок ---
 bot.on('callback_query', async (ctx) => {
-  const supabase = await createClient<Database>()
-  const cbData = (ctx.callbackQuery as { data: string }).data
-  const telegramId = ctx.from?.id
+  try {
+    const supabase = await createClient<Database>()
+    const cbData = (ctx.callbackQuery as { data: string }).data
+    const telegramId = ctx.from?.id
 
-  if (!telegramId || !cbData) return
+    if (!telegramId || !cbData) return
 
-  if (cbData.startsWith('offer_')) {
-    const leadId = cbData.replace('offer_', '')
+    if (cbData.startsWith('offer_')) {
+      const leadId = cbData.replace('offer_', '')
+      const updateContext: SellerUpdate = { last_active_lead_id: leadId }
 
-    const updateContext: SellerUpdate = {
-      last_active_lead_id: leadId
+      const { error } = await (supabase.from('sellers') as any)
+        .update(updateContext)
+        .eq('telegram_id', telegramId)
+
+      if (error) return await ctx.answerCbQuery('Ошибка обновления данных')
+
+      await ctx.answerCbQuery()
+      return await ctx.reply('Введите вашу цену за деталь (только число):')
     }
 
-    // Обход ошибки never для метода update
-    const { error } = await (supabase.from('sellers') as any)
-      .update(updateContext)
-      .eq('telegram_id', telegramId)
-
-    if (error) return ctx.answerCbQuery('Ошибка обновления данных')
-
-    await ctx.answerCbQuery()
-    return ctx.reply('Введите вашу цену за деталь (только число):')
-  }
-
-  if (cbData.startsWith('no_stock_')) {
-    await ctx.answerCbQuery()
-    return ctx.editMessageText('✅ Отмечено: детали нет в наличии.')
+    if (cbData.startsWith('no_stock_')) {
+      await ctx.answerCbQuery()
+      return await ctx.editMessageText('✅ Отмечено: детали нет в наличии.')
+    }
+  } catch (err) {
+    console.error('[BOT] Callback crash:', err)
   }
 })
 
 // --- TEXT MESSAGES: Прием цены ---
 bot.on('text', async (ctx) => {
-  const supabase = await createClient<Database>()
-  const text = ctx.message.text.trim()
-  const telegramId = ctx.from.id
+  try {
+    const supabase = await createClient<Database>()
+    const text = ctx.message.text.trim()
+    const telegramId = ctx.from.id
 
-  if (!/^\d+$/.test(text)) {
-    return ctx.reply('Пожалуйста, введите только числовое значение цены.')
-  }
-
-  // Принудительно типизируем результат через as
-  const { data } = await supabase
-    .from('sellers')
-    .select('*')
-    .eq('telegram_id', telegramId)
-    .maybeSingle()
-  
-  const seller = data as SellerRow | null
-
-  if (seller && seller.last_active_lead_id) {
-    const price = parseInt(text)
-
-    const newOffer: OfferInsert = {
-      lead_id: seller.last_active_lead_id,
-      seller_id: seller.id,
-      price_vendor: price,
-      comment: 'Ответ через Telegram-бота',
-      is_winner: false
+    if (!/^\d+$/.test(text)) {
+      return await ctx.reply('Пожалуйста, введите только числовое значение цены.')
     }
 
-    // Обход ошибки never для создания оффера
-    const { error: offerError } = await (supabase.from('offers') as any).insert(newOffer)
-
-    if (offerError) {
-      console.error('Offer error:', offerError)
-      return ctx.reply('❌ Ошибка сохранения цены.')
-    }
-
-    const resetContext: SellerUpdate = {
-      last_active_lead_id: null
-    }
-
-    // Обход ошибки never для сброса контекста
-    await (supabase.from('sellers') as any)
-      .update(resetContext)
+    const { data } = await supabase
+      .from('sellers')
+      .select('*')
       .eq('telegram_id', telegramId)
+      .maybeSingle()
+    
+    const seller = data as SellerRow | null
 
-    return ctx.reply(`✅ Цена ${price.toLocaleString()} KZT принята! Мы сообщим вам решение клиента.`)
+    if (seller && seller.last_active_lead_id) {
+      const price = parseInt(text)
+      const newOffer: OfferInsert = {
+        lead_id: seller.last_active_lead_id,
+        seller_id: seller.id,
+        price_vendor: price,
+        comment: 'Ответ через Telegram-бота',
+        is_winner: false
+      }
+
+      const { error: offerError } = await (supabase.from('offers') as any).insert(newOffer)
+
+      if (offerError) {
+        console.error('[BOT] Offer insert error:', offerError)
+        return await ctx.reply('❌ Ошибка сохранения цены.')
+      }
+
+      const resetContext: SellerUpdate = { last_active_lead_id: null }
+      await (supabase.from('sellers') as any).update(resetContext).eq('telegram_id', telegramId)
+
+      return await ctx.reply(`✅ Цена ${price.toLocaleString()} KZT принята!`)
+    }
+
+    return await ctx.reply('Сначала нажмите кнопку "Предложить цену" под активной заявкой.')
+  } catch (err) {
+    console.error('[BOT] Text crash:', err)
   }
-
-  return ctx.reply('Сначала нажмите кнопку "Предложить цену" под активной заявкой.')
 })
 
-// --- WEBHOOK HANDLER ---
+// --- WEBHOOK HANDLER (PATCHED FOR VERCEL) ---
 export async function POST(request: Request) {
   try {
     const secretToken = request.headers.get('X-Telegram-Bot-Api-Secret-Token')
     
+    // Лог для проверки в консоли Vercel
+    console.log('--- NEW WEBHOOK REQUEST ---')
+
     if (secretToken !== process.env.TELEGRAM_WEBHOOK_SECRET) {
+      console.error('Unauthorized attempt: token mismatch')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
+    console.log('Payload:', JSON.stringify(body))
+
+    // ВАЖНО: Дожидаемся обработки, иначе Vercel убьет функцию раньше времени
     await bot.handleUpdate(body)
+    
     return NextResponse.json({ ok: true })
   } catch (error) {
-    console.error('Bot Error:', error)
-    return NextResponse.json({ ok: false }, { status: 500 })
+    console.error('CRITICAL BOT ERROR:', error)
+    // Возвращаем 200, чтобы Telegram перестал слать это битое сообщение
+    return NextResponse.json({ ok: true }) 
   }
 }
