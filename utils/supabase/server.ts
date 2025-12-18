@@ -2,11 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { Database } from '@/types/supabase'
 
-export async function createClient() {
+// Добавляем <T = Database>, чтобы функция принимала тип
+export async function createClient<T = Database>() {
   const cookieStore = await cookies()
 
-  // Добавляем <Database> вот сюда 👇
-  return createServerClient<Database>(
+  return createServerClient<T>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -20,7 +20,7 @@ export async function createClient() {
               cookieStore.set(name, value, options)
             )
           } catch {
-            // Игнорируем ошибки установки кук в Server Components
+            // В Server Components куки нельзя устанавливать, это нормально
           }
         },
       },
